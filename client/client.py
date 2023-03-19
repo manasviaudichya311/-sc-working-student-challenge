@@ -1,7 +1,10 @@
+import json
+import time
 from threading import Event
-from typing import Optional, Any
+from typing import Any, Optional
 
 import paho.mqtt.client as mqtt
+import requests
 
 # Feel free to add more libraries (e.g.: The REST Client library)
 
@@ -19,11 +22,20 @@ def send_secret_rest(secret_value: int):
     #
     # Assuming secret_value = 50, then the request will contain the following
     # body: {"value": 50}
-    pass
+    headers = {
+        'Content-Type': 'application/json'
+    }
+    data = json.dumps({"value": secret_value})
+    try:
+        requests.post("http://server:80/secret_number",
+                      data=data, headers=headers)
+    except Exception as err:
+        print(err)
 
 
 def on_mqtt_connect(client, userdata, flags, rc):
     print('Connected to MQTT broker')
+    client.subscribe("secret/number")
     mqtt_connection_event.set()
 
 
@@ -32,7 +44,9 @@ def on_mqtt_message(client: mqtt.Client, userdata: Any, msg: mqtt.MQTTMessage):
     # we are interested just on the value) and send this value to the REST
     # server... or maybe the sending to REST should be done somewhere else...
     # do you have any idea why?
-    pass
+    global secret
+    secret = json.loads(msg.payload.decode(encoding="utf-8"))["value"]
+    send_secret_rest(secret)
 
 
 def connect_mqtt() -> mqtt.Client:
@@ -47,22 +61,13 @@ def connect_mqtt() -> mqtt.Client:
     return client
 
 
-def wait_for_server_ready():
-    # Implement code to wait until the server is ready, it's up to you how
-    # to do that. Our advice: Check the server source code and check if there
-    # is anything useful that can help.
-    # Hint: If you prefer, feel free to delete this method, use an external
-    # tool and incorporate it in the Dockerfile
-    pass
-
-
 def main():
     global mqtt_client
 
-    wait_for_server_ready()
-
     mqtt_client = connect_mqtt()
     mqtt_connection_event.wait()
+    
+    time.sleep(1)
 
     # At this point, we have our MQTT connection established, now we need to:
     # 1. Subscribe to the MQTT topic: secret/number

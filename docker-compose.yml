@@ -24,6 +24,9 @@ services:
     depends_on:
       - mqtt-broker
       - server
+    environment:
+      WAIT_HOSTS: server:80
+      WAIT_TIMEOUT: 120
 
   rf-test:
     build:
